@@ -1,75 +1,103 @@
-#include <EEPROM.h>
-#include <SoftwareSerial.h>
-SoftwareSerial BT_Serial(2, 3); // RX, TX
+#include <EEPROM.h>                // Include EEPROM library to store and retrieve relay states
+#include <SoftwareSerial.h>        // Include SoftwareSerial library for Bluetooth communication
+#include <ESP8266WiFi.h>           // Include ESP8266WiFi library for Wi-Fi functionality
+#include <FirebaseESP8266.h>       // Include Firebase library to communicate with Firebase database
 
-#define Relay1 4 // Load1 Pin Out
-#define Relay2 5 // Load2 Pin Out
-#define Relay3 6 // Load3 Pin Out
-#define Relay4 7 // Load4 Pin Out
+SoftwareSerial BT_Serial(2, 3);    // Create a software serial object for Bluetooth on pins 2 (RX) and 3 (TX)
 
-char bt_data; // variable to receive data from the serial port
-int load1, load2, load3, load4, power;
+#define Relay1 4                   // Define pin 4 as Relay1 output
+#define Relay2 5                   // Define pin 5 as Relay2 output
+#define Relay3 6                   // Define pin 6 as Relay3 output
+#define Relay4 7                   // Define pin 7 as Relay4 output
 
-void setup(){
-Serial.begin(9600);
-BT_Serial.begin(9600); 
+char bt_data;                      // Variable to store received Bluetooth data
+int load1, load2, load3, load4, power; // Variables to store the state of the relays and power
 
-pinMode(Relay1, OUTPUT); digitalWrite(Relay1, 1); 
-pinMode(Relay2, OUTPUT); digitalWrite(Relay2, 1); 
-pinMode(Relay3, OUTPUT); digitalWrite(Relay3, 1); 
-pinMode(Relay4, OUTPUT); digitalWrite(Relay4, 1); 
-  
-load1 = EEPROM.read(1);
-load2 = EEPROM.read(2);
-load3 = EEPROM.read(3);
-load4 = EEPROM.read(4);
+#define FIREBASE_HOST "your-project-id.firebaseio.com"  // Firebase project host URL
+#define FIREBASE_AUTH "your-database-secret"            // Firebase authentication key
+#define WIFI_SSID "your-wifi-ssid"                      // Wi-Fi network SSID
+#define WIFI_PASSWORD "your-wifi-password"              // Wi-Fi network password
 
-power = EEPROM.read(5);
-delay(500); 
+FirebaseData firebaseData;          // Create a Firebase data object to handle data communication
+
+void setup() {
+  Serial.begin(9600);               // Initialize serial communication at 9600 baud for debugging
+  BT_Serial.begin(9600);            // Initialize Bluetooth serial communication at 9600 baud
+
+  pinMode(Relay1, OUTPUT); digitalWrite(Relay1, 1); // Set Relay1 pin as output and turn it off (HIGH)
+  pinMode(Relay2, OUTPUT); digitalWrite(Relay2, 1); // Set Relay2 pin as output and turn it off (HIGH)
+  pinMode(Relay3, OUTPUT); digitalWrite(Relay3, 1); // Set Relay3 pin as output and turn it off (HIGH)
+  pinMode(Relay4, OUTPUT); digitalWrite(Relay4, 1); // Set Relay4 pin as output and turn it off (HIGH)
+
+  load1 = EEPROM.read(1);            // Read saved state of Relay1 from EEPROM
+  load2 = EEPROM.read(2);            // Read saved state of Relay2 from EEPROM
+  load3 = EEPROM.read(3);            // Read saved state of Relay3 from EEPROM
+  load4 = EEPROM.read(4);            // Read saved state of Relay4 from EEPROM
+  power = EEPROM.read(5);            // Read saved power state from EEPROM
+
+  delay(500);                        // Wait for 500ms before proceeding
+
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD); // Connect to the Wi-Fi network using the provided credentials
+  while (WiFi.status() != WL_CONNECTED) { // Wait until the Wi-Fi connection is established
+    delay(500);                       // Delay 500ms between connection attempts
+    Serial.print(".");                // Print a dot for each attempt to connect
+  }
+  Serial.println("Connected to WiFi"); // Print a message when connected to Wi-Fi
+
+  Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH); // Initialize Firebase with host URL and authentication key
+  Firebase.reconnectWiFi(true);       // Enable automatic reconnection to Wi-Fi if the connection is lost
 }
 
 void loop() {
-if(BT_Serial.available()>0){bt_data = BT_Serial.read();}
+  if (BT_Serial.available() > 0) {    // Check if there is any data received from Bluetooth
+    bt_data = BT_Serial.read();       // Read the incoming Bluetooth data
+  }
 
-if(bt_data == 'A'){load1=0;EEPROM.write(1, load1);}
-if(bt_data == 'a'){load1=1;EEPROM.write(1, load1);}
+  if (bt_data == 'A') { load1 = 0; EEPROM.write(1, load1); } // Turn off Relay1 and save state in EEPROM
+  if (bt_data == 'a') { load1 = 1; EEPROM.write(1, load1); } // Turn on Relay1 and save state in EEPROM
 
-if(bt_data == 'B'){load2=0;EEPROM.write(2, load2);}
-if(bt_data == 'b'){load2=1;EEPROM.write(2, load2);}
+  if (bt_data == 'B') { load2 = 0; EEPROM.write(2, load2); } // Turn off Relay2 and save state in EEPROM
+  if (bt_data == 'b') { load2 = 1; EEPROM.write(2, load2); } // Turn on Relay2 and save state in EEPROM
 
-if(bt_data == 'C'){load3=0;EEPROM.write(3, load3);}
-if(bt_data == 'c'){load3=1;EEPROM.write(3, load3);}
+  if (bt_data == 'C') { load3 = 0; EEPROM.write(3, load3); } // Turn off Relay3 and save state in EEPROM
+  if (bt_data == 'c') { load3 = 1; EEPROM.write(3, load3); } // Turn on Relay3 and save state in EEPROM
 
-if(bt_data == 'D'){load4=0;EEPROM.write(4, load4);}
-if(bt_data == 'd'){load4=1;EEPROM.write(4, load4);}
+  if (bt_data == 'D') { load4 = 0; EEPROM.write(4, load4); } // Turn off Relay4 and save state in EEPROM
+  if (bt_data == 'd') { load4 = 1; EEPROM.write(4, load4); } // Turn on Relay4 and save state in EEPROM
 
-if(bt_data == 'E'){power=0;EEPROM.write(5, power);}
-if(bt_data == 'e'){power=1;EEPROM.write(5, power);}
+  if (bt_data == 'E') { power = 0; EEPROM.write(5, power); } // Turn off power and save state in EEPROM
+  if (bt_data == 'e') { power = 1; EEPROM.write(5, power); } // Turn on power and save state in EEPROM
 
-bt_data = '0';
-  
-if(power==1){  
-digitalWrite(Relay1, 1); 
-digitalWrite(Relay2, 1); 
-digitalWrite(Relay3, 1); 
-digitalWrite(Relay4, 1); 
-}else{
-digitalWrite(Relay1, load1); 
-digitalWrite(Relay2, load2); 
-digitalWrite(Relay3, load3); 
-digitalWrite(Relay4, load4);
-}
+  bt_data = '0';                     // Reset Bluetooth data variable after processing
 
- BT_Serial.print(power); //send distance to MIT App
- BT_Serial.print(";");
- BT_Serial.print(load1); //send distance to MIT App 
- BT_Serial.print(";");
- BT_Serial.print(load2); //send distance to MIT App 
- BT_Serial.print(";");
- BT_Serial.print(load3); //send distance to MIT App 
- BT_Serial.print(";");
- BT_Serial.print(load4); //send distance to MIT App 
- BT_Serial.println(";");
-  
-delay(500);  
+  if (power == 1) {                  // If power is ON, turn all relays off (HIGH)
+    digitalWrite(Relay1, 1);
+    digitalWrite(Relay2, 1);
+    digitalWrite(Relay3, 1);
+    digitalWrite(Relay4, 1);
+  } else {                           // Otherwise, set relays according to their respective states
+    digitalWrite(Relay1, load1);
+    digitalWrite(Relay2, load2);
+    digitalWrite(Relay3, load3);
+    digitalWrite(Relay4, load4);
+  }
+
+  BT_Serial.print(power);             // Send power state to Bluetooth app
+  BT_Serial.print(";");
+  BT_Serial.print(load1);             // Send Relay1 state to Bluetooth app
+  BT_Serial.print(";");
+  BT_Serial.print(load2);             // Send Relay2 state to Bluetooth app
+  BT_Serial.print(";");
+  BT_Serial.print(load3);             // Send Relay3 state to Bluetooth app
+  BT_Serial.print(";");
+  BT_Serial.print(load4);             // Send Relay4 state to Bluetooth app
+  BT_Serial.println(";");
+
+  Firebase.setInt("Home/Relay1", load1); // Send Relay1 state to Firebase
+  Firebase.setInt("Home/Relay2", load2); // Send Relay2 state to Firebase
+  Firebase.setInt("Home/Relay3", load3); // Send Relay3 state to Firebase
+  Firebase.setInt("Home/Relay4", load4); // Send Relay4 state to Firebase
+  Firebase.setInt("Home/Power", power);  // Send power state to Firebase
+
+  delay(500);                         // Wait for 500ms before the next loop iteration
 }
